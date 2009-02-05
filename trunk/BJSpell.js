@@ -7,20 +7,23 @@
  *
  * Date: 2009-02-05 23:50:01 +0000 (Wed, 05 Feb 2009)
  * Revision: 1
- * ToDo: documentation + better suggestion
+ * ToDo: better suggestion (at least one that make more sense)
  */
  BJSpell = function(){
  
     /**
-     * Every BJSpell call is a language based singleton.
+     * Every BJSpell call is a dictionary based singleton.
      * new BJSpell("en_US") === BJSpell("en_US")
      * var en = BJSpell("en_US", function(){
      *     this === new BJSpell("en_US") === en
      * });
      * It is possible to create many languages instances without problems
      * but every instance will be cached in the browser after its download.
-     * Every BJSpell instance uses a big amount of data due to the
-     * JavaScript "pre-compiled" dictionary.
+     * Every BJSpell instance uses a big amount of RAM due to the
+     * JavaScript "pre-compiled" dictionary and caching optimizations.
+     * @param   String a dictionary file to load. It has to contain the standard name of the language (e.g. en_US, en_EN, it_IT ...)
+     * @param   Function a callback to execute asyncronously on dictionary ready
+     * @return  BJSpell even invoked as regular callback returns the singletone instance for specified dictionary
      * @constructor
      */
     function BJSpell(dic, callback){
@@ -64,24 +67,23 @@
             return new BJSpell(dic, callback);
     };
 
-    /**
+    /** check a word, case insensitive
      * @param  String a word to check if it is correct or not
      * @return Boolean false if the word does not exist
      */
     BJSpell.prototype.check = function(word){
-        var checked = this.checked[word];
+        var checked = this.checked[word = word.toLowerCase()];
         return typeof checked === "boolean" ? checked : this.parse(word);
     };
 
-    /**
-     * @param  String a word to search in the dictionary (case insensitive)
+    /** check a "lowercased" word in the dictionary
+     * @param  String a lowercase word to search in the dictionary
      * @return Boolean false if the word does not exist
      */
-    BJSpell.prototype.parse = function(String){
-        if(/^[0-9]+$/.test(String))
-            return this.checked[String] = true;
-        var word = String.toLowerCase(),
-            result = !!this.words[word];
+    BJSpell.prototype.parse = function(word){
+        if(/^[0-9]+$/.test(word))
+            return this.checked[word] = true;
+        var result = !!this.words[word];
         if(!result){
             for(var
                 parsed = word,
@@ -92,10 +94,7 @@
                 i < length;
                 i++
             ){
-                rule = rules[i];
-                add = rule[0];
-                seek = rule[1];
-                re = rule[2];
+                rule = rules[i]; add = rule[0]; seek = rule[1]; re = rule[2];
                 str = word.substr(0, seek.length);
                 if(str === seek){
                     parsed = word.substring(str.length);
@@ -114,10 +113,7 @@
                     i < length;
                     i++
                 ){
-                    rule = rules[i];
-                    add = rule[0];
-                    seek = rule[1];
-                    re = rule[2];
+                    rule = rules[i]; add = rule[0]; seek = rule[1]; re = rule[2];
                     str = parsed.substring(len - seek.length);
                     if(str === seek){
                         seek = parsed.substring(0, len - str.length);
@@ -131,10 +127,10 @@
                 }
             }
         };
-        return this.checked[String] = result;
+        return this.checked[word] = result;
     };
 
-    /**
+    /** invoke a specific callback for each word that is not valid
      * @param  String a string with zero or more words to check
      * @param  Function a callback to use as replace. Only wrong words will be passed to the callback.
      * @return Boolean false if the word does not exist
@@ -146,14 +142,14 @@
         });
     };
 
-    /** basic/silly implemnetation of a suggestion - I will write something more interesting one day
+    /** basic/silly implementation of a suggestion - I will write something more interesting one day
      * @param  String a word, generally bad, to look for a suggestion
      * @param  Number an optional unsigned integer to retrieve N suggestions.
      * @return Array a list of possibilities/suggestions
      */
     BJSpell.prototype.suggest = function(word, many){
         if(typeof this.words[word] === "string"){
-            // not implemented yet, requires classes parser
+            // not implemented yet, requires word classes parser
             var words = [word];
         } else {
             var keys = this.keys,
@@ -175,8 +171,15 @@
         };
         return words;
     };
+    
+    /** private scope functions
+     * empty, as empty callback
+     * indexOf, as Array.prototype.indexOf, normalized for IE or other browsers
+     * sync, to copy over two objects keys/values
+     */
     var empty = function(){},
         indexOf = Array.prototype.indexOf || function(word){for(var i=0,length=this.length;i<length&&this[i]!==word;i++);return i==length?-1:i},
         sync = function(a,b){for(var k in b)a[k]=b[k];return a};
+
     return BJSpell;
 }();
