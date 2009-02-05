@@ -1,0 +1,135 @@
+<script runat="server">
+/*!
+ * BJSpell JavaScript Dictionary Creator - Server v0.0.1
+ * http://code.google.com/p/bjspell/
+ *
+ * Copyright (c) 2009 Andrea Giammarchi
+ * Licensed under the Lesser GPL licenses.
+ *
+ * Date: 2009-02-05 23:50:01 +0000 (Wed, 05 Feb 2009)
+ * Revision: 1
+ * ToDo: documentation
+ */
+if(Jaxer.request.data.name && Jaxer.request.data.data)(function(data){
+    var file = new Jaxer.File(Jaxer.request.currentFolder.concat("/dictionary.js/", data.name).replace(/\//g, "\\"));
+    file.open("wb");
+    file.write(data.data);
+    file.close();
+})(Jaxer.request.data);
+else(function(){
+    for(var
+        valid = {},
+        files = new Jaxer.Dir(Jaxer.request.currentFolder.concat("/dictionary/").replace(/\//g, "\\")).readDir(),
+        i = 0,
+        length = files.length;
+        i < length;
+        i++
+    )
+        valid[files[i].leaf.split(".")[0]] = true;
+    var ul = document.createElement("ul"),
+        li = document.createElement("li");
+    for(var key in valid)
+        ul.appendChild(li.cloneNode(true)).appendChild(document.createTextNode('Create ' + key + ' Dictionary'));
+    delete li;
+    ul.style.cursor = "pointer";
+    ul.setAttribute("onclick", "return Jaxer.BJSpell.create.apply(Jaxer.BJSpell,arguments);");
+    onload = function(){
+        document.body.appendChild(ul);
+    };
+})();
+</script>
+<script runat="client">
+/*!
+ * BJSpell JavaScript Dictionary Creator - Client v0.0.1
+ * http://code.google.com/p/bjspell/
+ *
+ * Copyright (c) 2009 Andrea Giammarchi
+ * Licensed under the Lesser GPL licenses.
+ *
+ * Date: 2009-02-05 23:50:01 +0000 (Wed, 05 Feb 2009)
+ * Revision: 1
+ * ToDo: documentation
+ */
+Jaxer.BJSpell = {
+    create:function(event){
+        var li = event ? event.target : window.event.srcElement,
+            file = li.firstChild.nodeValue.substring(7).split(" ")[0],
+            global = this.hunspell(file + ".dic", this.dic),
+            xhr = new XMLHttpRequest;
+        xhr.open("post", "?self", false);
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.send("name=".concat(file, ".js&data=BJSpell.", file, "=", encodeURIComponent(
+            global.substring(0, global.length - 1).concat(",rules:",
+                this.hunspell(file + ".aff", this.aff), "}")
+            )
+        ));
+        return false;
+    },
+    aff:function(lines){
+        for(var
+            rules = {PFX:[], SFX:[]},
+            i = 0,
+            length = lines.length,
+            line;
+            i < length;
+            i++
+        ){
+            line = lines[i];
+            switch(line.substr(0, 3)){
+                case    "PFX":
+                case    "SFX":
+                    var type = line.substr(0, 3),
+                        name = line.substr(4, 1),
+                        product = line.substr(6, 1) === "Y",
+                        many = i + (line.substring(8) >> 0),
+                        referer = rules[type],
+                        j = i,
+                        info;
+                    while(j++ < many)
+                        referer[referer.length] = lines[j].substring(8).split(/\s+/).slice(0, 3).concat([name]);
+                    i = j;
+                    break;
+            }
+        };
+        return Jaxer.Serialization.toJSONString(rules);
+    },
+    dic:function(lines){
+        for(var
+            ignore = String.fromCharCode(65533),
+            dictionary = {},
+            alphabet = {},
+            i = 1,
+            length = lines.length,
+            re = "/\\b[",
+            line, split, key;
+            i < length;
+            i++
+        ){
+            line = lines[i].replace(/^\s+|\s+$/g, "");
+            if(line.length){
+                split = line.split("/");
+                line = split[0].toLowerCase();
+                if(line !== ignore){
+                    dictionary[line] = split[1] || true;
+                    for(var j = 0, c; j < line.length; j++)
+                        alphabet[line.charAt(j)] = true;
+                }
+            }
+        };
+        for(key in alphabet){
+            if(key !== ignore && /[^\.\-\_\,\/\:\;\@\?\=\+\-\*£$^\(\)\[\]\{\}~<>]/.test(key))
+                re += key;
+        };
+        re += "]+\\b/ig";
+        alphabet = {words:dictionary,alphabet:null};
+        line = Jaxer.Serialization.toJSONString(alphabet);
+        return line.substring(0, line.length - 5).concat(re, "}");
+    },
+    hunspell:function(file, callback){
+        var xhr = new XMLHttpRequest;
+        xhr.open("get", "dictionary/" + file, false);
+        xhr.send(null);
+        return callback(xhr.responseText.split(/\r\n|\r|\n/));
+    }
+};
+</script>

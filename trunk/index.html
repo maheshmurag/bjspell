@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BJSpell demo page :: Dictionary en_US</title>
+        <style type="text/css">
+        div {
+            float: left;
+            border: 1px solid silver;
+            padding: 4px;
+            width: 45%;
+            margin: 12px 12px auto auto;
+            font-family: Verdana, Helvetica, sans-serif;
+            font-size: 8pt;
+        }
+        #text, #html {
+            border: 0;
+            padding: 0;
+            margin: 0;
+            line-height: 10pt;
+            overflow-x:hidden;
+            overflow-y:scroll;
+            font-family: Verdana, Helvetica, sans-serif;
+            font-size: 8pt;
+            margin-top: 4px;
+        }
+        #text, #html {
+            width: 100%;
+            height: 200px;
+        }
+        span.underline {
+            position: relative;
+            display: inline-block;
+            background-image: url(img/underline.gif);
+            background-position: bottom;
+            background-repeat: repeat-x;
+            cursor: pointer;
+        }
+        ul.suggest {
+            position: absolute;
+            top: 16px;
+            left: 0;
+            margin: 0;
+            padding: 8px;
+            list-style: none;
+            color: gray;
+            display: block;
+            border: 1px solid #EEE;
+            background-color: #FFF;
+        }
+        strong {
+            padding: 4px;
+            background: #EEE;
+            display: block;
+        }
+        </style>
+        <script type="text/javascript" src="BJSpell.js"></script>
+        <script type="text/javascript" src="dictionary.js/en_US.js"></script>
+    </head>
+    <body>
+        <div><strong>User input</strong><textarea id="text"></textarea></div>
+        <div><strong>Spelled output</strong><div id="html"></div></div>
+    </body>
+    <script type="text/javascript">
+    /** BJSpell demostration page
+     * Please not this page is just a quick presentation of the project.
+     * Its content or its styles could not be perfec for every browser.
+     * (c) Andrea Giammarchi
+     */
+    function suggestMe(span){
+        if(!span.ul){
+            span.ul = span.appendChild(document.createElement("ul"));
+            span.ul.className = "suggest";
+            for(var i = 0, suggest = lang.suggest(span.firstChild.nodeValue, 5), li; i < 5; i++)
+                span.ul.appendChild(document.createElement("li")).appendChild(document.createTextNode(suggest[i]));
+            span.onmouseout = suggestMe.onmouseout;
+            span.style.zIndex = 1;
+        };
+        return false;
+    };
+    suggestMe.onmouseout = function(){
+        if(this.ul){
+            this.removeChild(this.ul);
+            this.ul = null;
+            this.style.zIndex = 0;
+        };
+    };
+    lang = BJSpell("dictionary.js/en_US.js", function(){
+        function newLines(String){
+            return String.replace(/(\r\n|\r|\n)/g, "<br />");
+        };
+        function spellCheck(){
+            div.innerHTML = newLines(
+                lang.replace(textarea.value.replace(/</g, String.fromCharCode(0)), function(word){
+                    return "<span class='underline' onmouseover='return suggestMe(this);'>" + word + "</span>";
+                }
+            ).replace(/\x00/g, "&lt;"));
+            div.scrollTop = div.scrollHeight;
+        };
+        var textarea = document.getElementById("text"),
+            div = document.getElementById("html"),
+            lang = this,
+            interval = 0;
+        textarea.onkeyup = function(){
+            if(interval)
+                clearTimeout(interval);
+            // incremental ... interval = setTimeout(spellCheck, 10 + (textarea.value.length / 500 * 10) >> 0);
+            interval = setTimeout(spellCheck, 150);
+        };
+        textarea.focus();
+    });
+    </script>
+</html>
